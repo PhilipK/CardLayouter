@@ -5,10 +5,16 @@ use printpdf::*;
 fn main() {
     let mut doc = PdfDocument::new("Cards");
     let image_paths = get_all_pngs(Path::new("/home/philip/Pictures/DreadDomain"));
+    let card_back = Path::new("/home/philip/Pictures/back.png");
+    let card_back_image = load_raw_image(card_back);
 
     let loaded_images = load_images(image_paths);
     let layout = LayoutSettings::default();
-    let final_pages = generate_pages(&mut doc, loaded_images, layout);
+    let mut final_pages = generate_pages(&mut doc, loaded_images, &layout);
+    if let Some(back_image) = card_back_image {
+        let page = generate_back_page(&mut doc, &layout, &back_image);
+        final_pages.push(page);
+    }
     // Save the PDF to a file
     let bytes = doc
         .with_pages(final_pages)
@@ -18,25 +24,72 @@ fn main() {
     println!("Created image_example.pdf");
 }
 
+fn load_raw_image(path: &Path) -> Option<RawImage> {
+    if let Ok(data) = std::fs::read(path) {
+        if let Ok(image) = RawImage::decode_from_bytes(&data, &mut Vec::new()) {
+            return Some(image);
+        }
+    }
+    None
+}
+
 fn load_images(image_paths: Vec<PathBuf>) -> Vec<RawImage> {
     let mut loaded_images = vec![];
     for image_path in image_paths {
-        if let Ok(data) = std::fs::read(image_path) {
-            if let Ok(image) = RawImage::decode_from_bytes(&data, &mut Vec::new()) {
-                loaded_images.push(image);
-            }
+        if let Some(image) = load_raw_image(&image_path) {
+            loaded_images.push(image);
         }
     }
     loaded_images
 }
 
+fn generate_back_page(
+    doc: &mut PdfDocument,
+    layout: &LayoutSettings,
+    back_image: &RawImage,
+) -> PdfPage {
+    let l = layout;
+    let dpi = 300.0;
+    let mut page_ops = vec![];
+
+    let target_width_pixels = l.card_width.into_px(dpi);
+    let target_height_pixels = l.card_height.into_px(dpi);
+    let scale_x = target_width_pixels.0 as f32 / back_image.width as f32;
+    let scale_y = target_height_pixels.0 as f32 / back_image.height as f32;
+
+    let image_id = doc.add_image(&back_image);
+
+    for i in 0..l.card_columns * l.card_rows {
+        let col = i % l.card_columns;
+        let row = i / l.card_rows;
+        // Add the image to the document resources and get its ID
+
+        // Place the same image again, but translated, rotated, and scaled
+        page_ops.push(Op::UseXobject {
+            id: image_id.clone(),
+            transform: XObjectTransform {
+                translate_x: Some((l.card_width * (col as f32)) + l.margin_x),
+                translate_y: Some((l.card_height * (row as f32)) + l.margin_y),
+                scale_x: Some(scale_x),
+                scale_y: Some(scale_y),
+                dpi: Some(dpi),
+                rotate: None,
+            },
+        });
+    }
+
+    page_ops.extend_from_slice(&draw_lines(l));
+    let page = PdfPage::new(l.page_width.into(), l.page_height.into(), page_ops);
+    page
+}
+
 fn generate_pages(
     doc: &mut PdfDocument,
     loaded_images: Vec<RawImage>,
-    layout: LayoutSettings,
+    layout: &LayoutSettings,
 ) -> Vec<PdfPage> {
     let mut pages = vec![];
-    let l = &layout;
+    let l = layout;
     let dpi = 300.0;
 
     let target_width_pixels = l.card_width.into_px(dpi);
