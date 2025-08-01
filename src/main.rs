@@ -24,14 +24,13 @@ fn main() {
     let card_width = Mm(63.0).into_pt();
     let card_height = Mm(88.0).into_pt();
 
-        let target_width_pixels = card_width.into_px(dpi);
+    let target_width_pixels = card_width.into_px(dpi);
 
-        let target_height_pixels = card_height.into_px(dpi);
+    let target_height_pixels = card_height.into_px(dpi);
 
-    for (i,loaded_image) in loaded_images.iter().enumerate() {
-
+    for (i, loaded_image) in loaded_images.iter().enumerate() {
         let scale_x = target_width_pixels.0 as f32 / loaded_image.width as f32;
-        let scale_y = target_height_pixels.0  as f32/ loaded_image.height as f32;
+        let scale_y = target_height_pixels.0 as f32 / loaded_image.height as f32;
         let col = i / 3;
         let row = i % 3;
         // Add the image to the document resources and get its ID
@@ -46,7 +45,7 @@ fn main() {
                 scale_x: Some(scale_x),
                 scale_y: Some(scale_y),
                 dpi: Some(dpi),
-                rotate: None
+                rotate: None,
             },
         });
     }
