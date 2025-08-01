@@ -27,8 +27,7 @@ fn main() {
     let target_height_pixels = l.card_height.into_px(dpi);
 
     for chunk in loaded_images.chunks(l.card_columns * l.card_rows) {
-
-       let mut page_ops = vec![];
+        let mut page_ops = vec![];
         for (i, loaded_image) in chunk.iter().enumerate() {
             let scale_x = target_width_pixels.0 as f32 / loaded_image.width as f32;
             let scale_y = target_height_pixels.0 as f32 / loaded_image.height as f32;
