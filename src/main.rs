@@ -8,7 +8,6 @@ fn main() {
 
     let mut pages = vec![];
     // Create operations for our page
-    let mut page_ops = vec![];
 
     let mut loaded_images = vec![];
 
@@ -27,39 +26,37 @@ fn main() {
 
     let target_height_pixels = l.card_height.into_px(dpi);
 
-    let mut cards_on_page = 0;
-    for loaded_image in loaded_images.iter() {
-        let scale_x = target_width_pixels.0 as f32 / loaded_image.width as f32;
-        let scale_y = target_height_pixels.0 as f32 / loaded_image.height as f32;
-        let col = cards_on_page % l.card_columns;
-        let row = cards_on_page / l.card_rows;
-        // Add the image to the document resources and get its ID
-        let image_id = doc.add_image(&loaded_image);
+    for chunk in loaded_images.chunks(l.card_columns * l.card_rows) {
 
-        // Place the same image again, but translated, rotated, and scaled
-        page_ops.push(Op::UseXobject {
-            id: image_id.clone(),
-            transform: XObjectTransform {
-                translate_x: Some((l.card_width * (col as f32)) + l.margin_x),
-                translate_y: Some((l.card_height * (row as f32)) + l.margin_y),
-                scale_x: Some(scale_x),
-                scale_y: Some(scale_y),
-                dpi: Some(dpi),
-                rotate: None,
-            },
-        });
-        cards_on_page += 1;
-        if cards_on_page >= 9 {
-            pages.push(page_ops);
-            page_ops = vec![];
-            cards_on_page = 0;
+       let mut page_ops = vec![];
+        for (i, loaded_image) in chunk.iter().enumerate() {
+            let scale_x = target_width_pixels.0 as f32 / loaded_image.width as f32;
+            let scale_y = target_height_pixels.0 as f32 / loaded_image.height as f32;
+            let col = i % l.card_columns;
+            let row = i / l.card_rows;
+            // Add the image to the document resources and get its ID
+            let image_id = doc.add_image(&loaded_image);
+
+            // Place the same image again, but translated, rotated, and scaled
+            page_ops.push(Op::UseXobject {
+                id: image_id.clone(),
+                transform: XObjectTransform {
+                    translate_x: Some((l.card_width * (col as f32)) + l.margin_x),
+                    translate_y: Some((l.card_height * (row as f32)) + l.margin_y),
+                    scale_x: Some(scale_x),
+                    scale_y: Some(scale_y),
+                    dpi: Some(dpi),
+                    rotate: None,
+                },
+            });
         }
+        pages.push(page_ops);
     }
 
     let mut final_pages = vec![];
     for mut page_ops in pages {
         page_ops.extend_from_slice(&draw_lines(l));
-        let page = PdfPage::new(Mm(210.0), Mm(297.0), page_ops);
+        let page = PdfPage::new(l.page_width.into(), l.page_height.into(), page_ops);
         final_pages.push(page);
     }
     // Save the PDF to a file
@@ -84,8 +81,14 @@ fn draw_lines(layout: &LayoutSettings) -> Vec<Op> {
             (l.margin_x + Pt(column as f32 * l.card_width.0), zero),
         ));
         lines.push((
-            (l.margin_x + Pt(column as f32 * l.card_width.0), l.page_height - l.margin_y),
-            (l.margin_x + Pt(column as f32 * l.card_width.0), l.page_height ),
+            (
+                l.margin_x + Pt(column as f32 * l.card_width.0),
+                l.page_height - l.margin_y,
+            ),
+            (
+                l.margin_x + Pt(column as f32 * l.card_width.0),
+                l.page_height,
+            ),
         ));
     }
     for row in 0..=l.card_rows {
@@ -95,9 +98,11 @@ fn draw_lines(layout: &LayoutSettings) -> Vec<Op> {
         ));
         lines.push((
             (l.page_width, l.margin_y + Pt(row as f32 * l.card_height.0)),
-            (l.page_width-l.margin_x, l.margin_y + Pt(row as f32 * l.card_height.0)),
+            (
+                l.page_width - l.margin_x,
+                l.margin_y + Pt(row as f32 * l.card_height.0),
+            ),
         ));
-        
     }
 
     let mut ops = vec![];
