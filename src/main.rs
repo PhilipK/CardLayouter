@@ -6,8 +6,9 @@ fn main() {
     let mut doc = PdfDocument::new("Cards");
     let image_paths = get_all_pngs(Path::new("/home/philip/Pictures/DreadDomain"));
 
+    let mut pages = vec![];
     // Create operations for our page
-    let mut ops = Vec::new();
+    let mut page_ops = vec![];
 
     let mut loaded_images = vec![];
 
@@ -28,16 +29,17 @@ fn main() {
 
     let target_height_pixels = card_height.into_px(dpi);
 
-    for (i, loaded_image) in loaded_images.iter().enumerate() {
+    let mut cards_on_page = 0;
+    for  loaded_image in loaded_images.iter().enumerate() {
         let scale_x = target_width_pixels.0 as f32 / loaded_image.width as f32;
         let scale_y = target_height_pixels.0 as f32 / loaded_image.height as f32;
-        let col = i / 3;
-        let row = i % 3;
+        let col = card_on_page  / 3;
+        let row = card_on_page % 3;
         // Add the image to the document resources and get its ID
         let image_id = doc.add_image(&loaded_image);
 
         // Place the same image again, but translated, rotated, and scaled
-        ops.push(Op::UseXobject {
+        page_ops.push(Op::UseXobject {
             id: image_id.clone(),
             transform: XObjectTransform {
                 translate_x: Some((card_width * (col as f32)) + margin),
@@ -48,13 +50,22 @@ fn main() {
                 rotate: None,
             },
         });
+        cards_on_page += 1;
+        if cards_on_page >= 9 {
+            pages.push(page_ops);
+            page_ops = vec![];
+            cards_on_page = 0;
+        }
     }
-    // Create a page with our operations
-    let page = PdfPage::new(Mm(210.0), Mm(297.0), ops);
 
+    let mut final_pages = vec![];
+    for page_ops  in pages {
+        let page = PdfPage::new(Mm(210.0), Mm(297.0), page_ops);
+        final_pages.push(page);
+    }
     // Save the PDF to a file
     let bytes = doc
-        .with_pages(vec![page])
+        .with_pages(final_pages)
         .save(&PdfSaveOptions::default(), &mut Vec::new());
 
     std::fs::write("./image_example.pdf", bytes).unwrap();
