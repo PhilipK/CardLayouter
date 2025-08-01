@@ -6,11 +6,20 @@ fn main() {
     let mut doc = PdfDocument::new("Cards");
     let image_paths = get_all_pngs(Path::new("/home/philip/Pictures/DreadDomain"));
 
-    let mut pages = vec![];
-    // Create operations for our page
+    let loaded_images = load_images(image_paths);
+    let layout = LayoutSettings::default();
+    let final_pages = generate_pages(&mut doc, loaded_images, layout);
+    // Save the PDF to a file
+    let bytes = doc
+        .with_pages(final_pages)
+        .save(&PdfSaveOptions::default(), &mut Vec::new());
 
+    std::fs::write("./image_example.pdf", bytes).unwrap();
+    println!("Created image_example.pdf");
+}
+
+fn load_images(image_paths: Vec<PathBuf>) -> Vec<RawImage> {
     let mut loaded_images = vec![];
-
     for image_path in image_paths {
         if let Ok(data) = std::fs::read(image_path) {
             if let Ok(image) = RawImage::decode_from_bytes(&data, &mut Vec::new()) {
@@ -18,7 +27,15 @@ fn main() {
             }
         }
     }
-    let layout = LayoutSettings::default();
+    loaded_images
+}
+
+fn generate_pages(
+    doc: &mut PdfDocument,
+    loaded_images: Vec<RawImage>,
+    layout: LayoutSettings,
+) -> Vec<PdfPage> {
+    let mut pages = vec![];
     let l = &layout;
     let dpi = 300.0;
 
@@ -58,13 +75,7 @@ fn main() {
         let page = PdfPage::new(l.page_width.into(), l.page_height.into(), page_ops);
         final_pages.push(page);
     }
-    // Save the PDF to a file
-    let bytes = doc
-        .with_pages(final_pages)
-        .save(&PdfSaveOptions::default(), &mut Vec::new());
-
-    std::fs::write("./image_example.pdf", bytes).unwrap();
-    println!("Created image_example.pdf");
+    final_pages
 }
 
 fn draw_lines(layout: &LayoutSettings) -> Vec<Op> {
