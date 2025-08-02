@@ -1,4 +1,5 @@
 mod pdf_generation;
+mod layout;
 
 use js_sys::{Array, Uint8Array};
 

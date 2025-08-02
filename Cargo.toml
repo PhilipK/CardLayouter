@@ -15,9 +15,9 @@ web-sys = { version = "0.3", features = [
 ]}
 
 [profile.release]
-opt-level = "z"          # optimize for code size
+#opt-level = "z"          # optimize for code size
 lto = true               # link-time optimizations
-codegen-units = 1        # better LTO in one pass
+#codegen-units = 1        # better LTO in one pass
 strip = "symbols"        # remove symbol names
 panic = "abort"          # smaller panic support
 
