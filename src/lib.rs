@@ -1,47 +1,5 @@
-use std::path::{Path, PathBuf};
-
+use js_sys::{Array, Uint8Array};
 use printpdf::*;
-
-fn main() {
-    let mut doc = PdfDocument::new("Cards");
-    let image_paths = get_all_pngs(Path::new("/home/philip/Pictures/DreadDomain"));
-    let card_back = Path::new("/home/philip/Pictures/back.png");
-    let card_back_image = load_raw_image(card_back);
-
-    let loaded_images = load_images(image_paths);
-    let layout = LayoutSettings::default();
-    let mut final_pages = generate_pages(&mut doc, loaded_images, &layout);
-    if let Some(back_image) = card_back_image {
-        let page = generate_back_page(&mut doc, &layout, &back_image);
-        final_pages.push(page);
-    }
-    // Save the PDF to a file
-    let bytes = doc
-        .with_pages(final_pages)
-        .save(&PdfSaveOptions::default(), &mut Vec::new());
-
-    std::fs::write("./image_example.pdf", bytes).unwrap();
-    println!("Created image_example.pdf");
-}
-
-fn load_raw_image(path: &Path) -> Option<RawImage> {
-    if let Ok(data) = std::fs::read(path) {
-        if let Ok(image) = RawImage::decode_from_bytes(&data, &mut Vec::new()) {
-            return Some(image);
-        }
-    }
-    None
-}
-
-fn load_images(image_paths: Vec<PathBuf>) -> Vec<RawImage> {
-    let mut loaded_images = vec![];
-    for image_path in image_paths {
-        if let Some(image) = load_raw_image(&image_path) {
-            loaded_images.push(image);
-        }
-    }
-    loaded_images
-}
 
 fn generate_back_page(
     doc: &mut PdfDocument,
@@ -191,20 +149,6 @@ fn draw_lines(layout: &LayoutSettings) -> Vec<Op> {
     ops
 }
 
-fn get_all_pngs(folder_path: &Path) -> Vec<PathBuf> {
-    let mut pngs = Vec::new();
-    if let Ok(entries) = std::fs::read_dir(folder_path) {
-        for entry in entries.flatten() {
-            if let Some(ext) = entry.path().extension() {
-                if ext == "png" {
-                    pngs.push(entry.path().to_path_buf());
-                }
-            }
-        }
-    }
-    pngs
-}
-
 struct LayoutSettings {
     card_width: Pt,
     card_height: Pt,
@@ -239,4 +183,39 @@ impl Default for LayoutSettings {
             card_rows: card_rows as usize,
         }
     }
+}
+
+use wasm_bindgen::prelude::*;
+use web_sys::console;
+
+#[wasm_bindgen]
+pub fn generate_pdf(pngs: Array) -> Uint8Array {
+    console::log_1(&format!("JS passed {} buffers", pngs.length()).into());
+    let mut images = Vec::new();
+
+    for (i, entry) in pngs.iter().enumerate() {
+        let u8arr = Uint8Array::new(&entry);
+        console::log_1(&format!("Buffer #{} length = {}", i, u8arr.length()).into());
+        let mut buf = vec![0; u8arr.length() as usize];
+        u8arr.copy_to(&mut buf);
+        match RawImage::decode_from_bytes(&buf, &mut Vec::new()) {
+            Ok(img) => {
+                console::log_1(&format!("✅ Decoded image #{}", i).into());
+                images.push(img);
+            }
+            Err(e) => {
+                console::warn_1(&format!("⚠️ Failed to decode #{}: {:?}", i, e).into());
+            }
+        }
+    }
+
+    console::log_1(&format!("Decoded {} images", images.len()).into());
+    let mut doc = PdfDocument::new("Cards");
+    let pages = generate_pages(&mut doc, images, &LayoutSettings::default());
+    console::log_1(&format!("Generating {} pages", pages.len()).into());
+
+    let bytes = doc.with_pages(pages)
+                   .save(&PdfSaveOptions::default(), &mut Vec::new());
+    console::log_1(&format!("Final PDF size: {} bytes", bytes.len()).into());
+    Uint8Array::from(bytes.as_slice())
 }

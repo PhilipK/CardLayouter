@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<body>
+  <h1>Card PDF Generator</h1>
+  <input type="file" id="files" multiple accept="image/png" />
+  <button id="make">Generate PDF</button>
+  <script type="module">
+    import init, { generate_pdf } from "./pkg/cardlayouter.js";
+    async function run() {
+      await init(); // load the .wasm
+      const fileInput = document.getElementById("files");
+      document.getElementById("make").onclick = async () => {
+        const files = Array.from(fileInput.files);
+        const buffers = await Promise.all(files.map(f => f.arrayBuffer()));
+        // call into Rust: give it Vec<Uint8Array> of PNGs
+        const pdfBytes = generate_pdf(buffers);
+        const header = new TextDecoder().decode(pdfBytes.slice(0, 5));
+        console.log("PDF header:", header);
+        // turn returned Uint8Array into a blob & download
+        const blob = new Blob([pdfBytes], {type: "application/pdf"});
+        const url  = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "cards.pdf";
+        a.click();
+        URL.revokeObjectURL(url);
+      };
+    }
+    run();
+  </script>
+</body>
+</html>
