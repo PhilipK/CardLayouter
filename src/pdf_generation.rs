@@ -50,7 +50,6 @@ fn generate_pages(
     let dpi = 300.0;
 
     let target_width_pixels = l.card_width.into_px(dpi);
-
     let target_height_pixels = l.card_height.into_px(dpi);
 
     for chunk in loaded_images.chunks(l.card_columns * l.card_rows) {
@@ -201,11 +200,11 @@ pub fn generate_from_bytes(images_bytes: Vec<Vec<u8>>, back: Option<Vec<u8>>) ->
     let mut doc = PdfDocument::new("Cards");
     let mut pages = generate_pages(&mut doc, images, &l);
 
-    if let Some(img) = back{
+    if let Some(img) = back {
         match RawImage::decode_from_bytes(&img, &mut Vec::new()) {
             Ok(img) => {
-               let page =  generate_back_page(&mut doc, &l, &img);
-               pages.push(page);
+                let page = generate_back_page(&mut doc, &l, &img);
+                pages.push(page);
             }
             Err(e) => {
                 //console::warn_1(&format!("⚠️ Failed to decode #{}: {:?}", i, e).into());
