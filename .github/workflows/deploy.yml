@@ -25,15 +25,12 @@ jobs:
         run: cargo install wasm-bindgen-cli
 
       - name: Build WebAssembly
-        run: bash build.sh
+        run: bash build-deplo.sh
 
       - name: Upload Pages Artifact
-        uses: actions/upload-pages-artifact@v3
-
+        uses: actions/upload-paoges-artifact@v3
         with:
-          path: |
-            index.html
-            pkg/**
+          path: dist
 
   deploy:
     needs: build
