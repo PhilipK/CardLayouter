@@ -81,10 +81,10 @@ impl LayoutSettings {
 
         let card_width = card.width().into_pt();
         let card_height = card.height().into_pt();
-        let card_columns = (page_width.into_px(dpi).0 / card_width.into_px(dpi).0);
+        let card_columns = page_width.into_px(dpi).0 / card_width.into_px(dpi).0;
         let margin_x = Pt((page_width.0 - (card_columns as f32 * card_width.0)) / 2.0);
 
-        let card_rows = (page_height.into_px(dpi).0 / card_height.into_px(dpi).0);
+        let card_rows = page_height.into_px(dpi).0 / card_height.into_px(dpi).0;
         let margin_y = Pt((page_height.0 - (card_rows as f32 * card_height.0)) / 2.0);
 
         LayoutSettings {

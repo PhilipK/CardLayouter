@@ -157,6 +157,13 @@
         <option value="1">Letter</option>
       </select>
     </label>
+  <label>
+      Card size:
+      <select id="cardSize">
+        <option value="0">TCG <small>(63mm x 88mm)</small></option>
+        <option value="1">Tarrot <small>(70mm x 120mm)</small></option>
+      </select>
+    </label>
     <a id="downloadLink" style="display:none">Download PDF</a>
     <iframe id="pdfContainer" style="display:none" title="PDF Preview"></iframe>
   </main>
@@ -168,6 +175,7 @@
     const fileInput = document.getElementById("files");
     const backInput = document.getElementById("back");
     const paperSizeSelect = document.getElementById("paperSize");
+    const cardSizeSelect = document.getElementById("cardSize");
     const downloadLink = document.getElementById("downloadLink");
     const pdfContainer = document.getElementById("pdfContainer");
 
@@ -185,8 +193,9 @@
       }
 
       const paperSize = parseInt(paperSizeSelect.value, 10);
+      const cardSize = parseInt(cardSizeSelect.value, 10);
       try {
-        const pdfBytes = generate_pdf(buffers, backBuffer, paperSize);
+        const pdfBytes = generate_pdf(buffers, backBuffer, paperSize, cardSize);
         const pdfBlob = new Blob([pdfBytes], { type: "application/pdf" });
         const pdfUrl = URL.createObjectURL(pdfBlob);
 
@@ -210,6 +219,7 @@
     fileInput.addEventListener("change", handleChange);
     backInput.addEventListener("change", handleChange);
     paperSizeSelect.addEventListener("change", handleChange);
+    cardSizeSelect.addEventListener("change", handleChange);
 
 
     document.getElementById("toggleDescription").addEventListener("click", () => {

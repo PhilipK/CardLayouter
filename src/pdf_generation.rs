@@ -1,6 +1,6 @@
 use printpdf::*;
 
-use crate::layout::LayoutSettings;
+use crate::layout::{CardSize, LayoutSettings, PaperSize};
 
 fn generate_back_page(
     doc: &mut PdfDocument,
@@ -146,7 +146,7 @@ fn draw_lines(layout: &LayoutSettings) -> Vec<Op> {
     ops
 }
 
-pub fn generate_from_bytes(images_bytes: Vec<Vec<u8>>, back: Option<Vec<u8>>) -> Vec<u8> {
+pub fn generate_from_bytes(images_bytes: Vec<Vec<u8>>, back: Option<Vec<u8>>, paper_size:PaperSize, card_size:CardSize) -> Vec<u8> {
     let mut images = vec![];
     for img in images_bytes {
         match RawImage::decode_from_bytes(&img, &mut Vec::new()) {
@@ -158,7 +158,7 @@ pub fn generate_from_bytes(images_bytes: Vec<Vec<u8>>, back: Option<Vec<u8>>) ->
             }
         }
     }
-    let l = LayoutSettings::new(crate::layout::PaperSize::A4, crate::layout::CardSize::Tcg);
+    let l = LayoutSettings::new(paper_size, card_size);
 
     let mut doc = PdfDocument::new("Cards");
     let mut pages = generate_pages(&mut doc, images, &l);
