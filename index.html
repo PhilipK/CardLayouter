@@ -1,45 +1,226 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Card PDF Generator</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f0f2f5;
+      color: #333;
+    }
+
+    header {
+      background-color: #1e88e5;
+      color: white;
+      padding: 1rem 2rem;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.75rem;
+    }
+
+    main {
+      max-width: 800px;
+      margin: 2rem auto;
+      background: white;
+      padding: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    label {
+      display: block;
+      margin-top: 1rem;
+      font-weight: 600;
+    }
+
+    input[type="file"],
+    select {
+      display: block;
+      margin-top: 0.5rem;
+      padding: 0.4rem;
+      width: 100%;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    #pdfContainer {
+      margin-top: 2rem;
+      width: 100%;
+      height: 500px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.05);
+    }
+
+    #generateButton {
+      margin-top: 2rem;
+      padding: 0.75rem 1.5rem;
+      background-color: #43a047;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-size: 1rem;
+      border-radius: 6px;
+      transition: background-color 0.3s;
+    }
+
+    #generateButton:hover {
+      background-color: #388e3c;
+    }
+
+    #downloadLink {
+      display: inline-block;
+      margin-top: 1.5rem;
+      color: #1e88e5;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    #description-box {
+      margin-bottom: 1.5rem;
+    }
+
+    #toggleDescription {
+      font-size: 1rem;
+      color: #1e88e5;
+      text-decoration: none;
+      cursor: pointer;
+      display: inline-block;
+      margin-bottom: 0.5rem;
+      transition: color 0.2s ease;
+    }
+
+    #toggleDescription:hover {
+      text-decoration: underline;
+    }
+
+    #description {
+      background-color: #f9f9f9;
+      padding: 1rem;
+      border-left: 4px solid #1e88e5;
+      border-radius: 6px;
+      font-size: 1rem;
+      line-height: 1.6;
+      color: #444;
+      transition: all 0.3s ease;
+    }
+  </style>
+</head>
+
 <body>
- <h1>Card PDF Generator</h1>
-  <label>
-    Front images (PNG):
-    <input type="file" id="files" multiple accept="image/png" />
-  </label>
-  <br/>
-  <label>
-    Optional back image (PNG):
-    <input type="file" id="back" accept="image/png" />
-  </label>
-  <br/>
-  <button id="make">Generate PDF</button>
+  <header>
+    <h1>Card PDF Generator</h1>
+  </header>
+  <main>
+    <section id="description-box">
+      <a id="toggleDescription" href="#">▼ What is this?</a>
+      <div id="description" style="display: none;">
+        <p>
+          This tool lets you make your own cards, by generating a print-ready PDF from the images you upload. Each image will be scaled 
+          so that the final printed cards have the correct size.
+        </p>
+        <p>
+          You can optionally add a back image that will be used on all cards. Once the PDF is generated, you can preview
+          it and download it for printing.
+        </p>
+        <p style="font-weight: bold;">
+          When printing, be sure to select <u>"Actual size"</u> or <u>100%</u> (not "Fit" or "Scale") to ensure proper dimensions.
+        </p>
+      </div>
+    </section>
+
+
+    <label>
+      Card images (PNG):
+      <input type="file" id="files" multiple accept="image/png" />
+    </label>
+    <label>
+      Card back (PNG):
+      <input type="file" id="back" accept="image/png" />
+    </label>
+    <label>
+      Paper size:
+      <select id="paperSize">
+        <option value="0">A4</option>
+        <option value="1">Letter</option>
+      </select>
+    </label>
+    <a id="downloadLink" style="display:none">Download PDF</a>
+    <iframe id="pdfContainer" style="display:none" title="PDF Preview"></iframe>
+  </main>
   <script type="module">
     import init, { generate_pdf } from "./pkg/cardlayouter.js";
-    async function run() {
-      await init(); // load the .wasm
-      const fileInput = document.getElementById("files");
-      const backInput = document.getElementById("back");
-      document.getElementById("make").onclick = async () => {
-        const files = Array.from(fileInput.files);
-        const buffers = await Promise.all(files.map(f => f.arrayBuffer()));
-        let backBuffer = null;
-        if (backInput.files.length > 0) {
-          const b = await backInput.files[0].arrayBuffer();
-          backBuffer = new Uint8Array(b);
-        }
-        // call into Rust: give it Vec<Uint8Array> of PNGs
-        const pdfBytes = generate_pdf(buffers,backBuffer);
-        // turn returned Uint8Array into a blob & download
-        const blob = new Blob([pdfBytes], {type: "application/pdf"});
-        const url  = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "cards.pdf";
-        a.click();
-        URL.revokeObjectURL(url);
-      };
+
+    await init();
+
+    const fileInput = document.getElementById("files");
+    const backInput = document.getElementById("back");
+    const paperSizeSelect = document.getElementById("paperSize");
+    const downloadLink = document.getElementById("downloadLink");
+    const pdfContainer = document.getElementById("pdfContainer");
+
+    async function autoGeneratePDF() {
+      const filesArray = Array.from(fileInput.files);
+      if (filesArray.length === 0) return;
+
+      const buffers = await Promise.all(
+        filesArray.map(async (f) => new Uint8Array(await f.arrayBuffer()))
+      );
+
+      let backBuffer = null;
+      if (backInput.files.length > 0) {
+        backBuffer = new Uint8Array(await backInput.files[0].arrayBuffer());
+      }
+
+      const paperSize = parseInt(paperSizeSelect.value, 10);
+      try {
+        const pdfBytes = generate_pdf(buffers, backBuffer, paperSize);
+        const pdfBlob = new Blob([pdfBytes], { type: "application/pdf" });
+        const pdfUrl = URL.createObjectURL(pdfBlob);
+
+        pdfContainer.style.display = "block";
+        pdfContainer.src = pdfUrl;
+
+        downloadLink.style.display = "inline-block";
+        downloadLink.href = pdfUrl;
+        downloadLink.download = "cards.pdf";
+        downloadLink.textContent = "Download PDF";
+      } catch (err) {
+        console.error(err);
+        alert("Failed to generate PDF");
+      }
     }
-    run();
+
+    const handleChange = () => {
+      autoGeneratePDF();
+    };
+
+    fileInput.addEventListener("change", handleChange);
+    backInput.addEventListener("change", handleChange);
+    paperSizeSelect.addEventListener("change", handleChange);
+
+
+    document.getElementById("toggleDescription").addEventListener("click", () => {
+      const desc = document.getElementById("description");
+      desc.style.display = desc.style.display === "none" ? "block" : "none";
+    });
+
+
   </script>
+
+
 </body>
+
 </html>
