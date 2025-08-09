@@ -146,18 +146,31 @@ fn draw_lines(layout: &LayoutSettings) -> Vec<Op> {
     ops
 }
 
-pub fn generate_from_bytes(images_bytes: Vec<Vec<u8>>, back: Option<Vec<u8>>, paper_size:PaperSize, card_size:CardSize) -> Vec<u8> {
+pub fn generate_from_bytes(
+    images_bytes: Vec<Vec<u8>>,
+    back: Option<Vec<u8>>,
+    paper_size: PaperSize,
+    card_size: CardSize,
+    file_names: Vec<String>,
+) -> Vec<u8> {
+    //Sort by names first, then use indexes to decode images in that order
+    let mut file_names: Vec<_> = file_names.iter().enumerate().collect();
+    file_names.sort_by_key(|f| f.1);
+
     let mut images = vec![];
-    for img in images_bytes {
-        match RawImage::decode_from_bytes(&img, &mut Vec::new()) {
-            Ok(img) => {
-                images.push(img);
-            }
-            Err(_e) => {
-                //console::warn_1(&format!("⚠️ Failed to decode #{}: {:?}", i, e).into());
+    for (i, _) in file_names {
+        if let Some(img) = images_bytes.get(i) {
+            match RawImage::decode_from_bytes(&img, &mut Vec::new()) {
+                Ok(img) => {
+                    images.push(img);
+                }
+                Err(_e) => {
+                    //console::warn_1(&format!("⚠️ Failed to decode #{}: {:?}", i, e).into());
+                }
             }
         }
     }
+
     let l = LayoutSettings::new(paper_size, card_size);
 
     let mut doc = PdfDocument::new("Cards");

@@ -47,7 +47,7 @@ impl LayoutSettings {
     pub fn card_position(&self, i: usize) -> (Pt, Pt) {
         let l = self;
         let col = i % l.card_columns();
-        let row = i / l.card_rows();
+        let row = l.card_rows() - (i / l.card_rows()) -1;
 
         let translate_x = (l.card_width() * (col as f32)) + l.margin_x();
         let translate_y = (l.card_height() * (row as f32)) + l.margin_y();

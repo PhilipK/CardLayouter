@@ -186,6 +186,7 @@
       const buffers = await Promise.all(
         filesArray.map(async (f) => new Uint8Array(await f.arrayBuffer()))
       );
+      const fileNames =filesArray.map((f)=> f.name);
 
       let backBuffer = null;
       if (backInput.files.length > 0) {
@@ -195,7 +196,7 @@
       const paperSize = parseInt(paperSizeSelect.value, 10);
       const cardSize = parseInt(cardSizeSelect.value, 10);
       try {
-        const pdfBytes = generate_pdf(buffers, backBuffer, paperSize, cardSize);
+        const pdfBytes = generate_pdf(buffers, backBuffer, paperSize, cardSize,fileNames);
         const pdfBlob = new Blob([pdfBytes], { type: "application/pdf" });
         const pdfUrl = URL.createObjectURL(pdfBlob);
 
