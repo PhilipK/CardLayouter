@@ -1,0 +1,32 @@
+{
+  "name": "cardlayouter",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "build:wasm": "bash ./build-deploy.sh",
+    "test:rust": "cargo test",
+    "pretest:e2e": "npm run build:wasm",
+    "test:e2e": "playwright test",
+    "test": "npm run test:rust && npm run test:e2e"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PhilipK/CardLayouter.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/PhilipK/CardLayouter/issues"
+  },
+  "homepage": "https://github.com/PhilipK/CardLayouter#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.56.1",
+    "pdf-lib": "^1.17.1",
+    "serve": "^14.2.5"
+  }
+}
