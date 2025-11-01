@@ -272,3 +272,86 @@ fn generate_back_page_straight(
         page_ops,
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const FRONT_A: &[u8] = include_bytes!("../tests/fixtures/front_a.png");
+    const FRONT_B: &[u8] = include_bytes!("../tests/fixtures/front_b.jpg");
+    const BACK: &[u8] = include_bytes!("../tests/fixtures/back.png");
+
+    fn common_inputs() -> (Vec<Vec<u8>>, Option<Vec<u8>>, Vec<String>) {
+        let images = vec![FRONT_B.to_vec(), FRONT_A.to_vec()];
+        let names = vec!["front_a.png".to_string(), "front_b.jpg".to_string()];
+        (images, Some(BACK.to_vec()), names)
+    }
+
+    #[test]
+    fn generates_pdf_with_png_and_jpeg_support() {
+        let (images, back, names) = common_inputs();
+        let result = generate_from_bytes(images, back, PaperSize::A4, CardSize::Tcg, names, true)
+            .expect("PDF should be generated");
+
+        assert!(result.len() > 700, "expected non-trivial PDF size");
+    }
+
+    #[test]
+    fn mirrored_back_changes_output() {
+        let (images, back, names) = common_inputs();
+
+        let mirrored = generate_from_bytes(
+            images.clone(),
+            back.clone(),
+            PaperSize::A4,
+            CardSize::Tcg,
+            names.clone(),
+            true,
+        )
+        .expect("mirrored generation should succeed");
+
+        let straight =
+            generate_from_bytes(images, back, PaperSize::A4, CardSize::Tcg, names, false)
+                .expect("straight generation should succeed");
+
+        assert_ne!(mirrored, straight, "mirroring should influence the layout");
+    }
+
+    #[test]
+    fn missing_front_bytes_reports_error() {
+        let images = vec![FRONT_A.to_vec()];
+        let names = vec!["front_a.png".to_string(), "front_b.jpg".to_string()];
+
+        let error = generate_from_bytes(
+            images,
+            Some(BACK.to_vec()),
+            PaperSize::A4,
+            CardSize::Tcg,
+            names,
+            true,
+        )
+        .expect_err("should fail because one front image is missing");
+
+        match error {
+            GenerateError::MissingImage { name } => {
+                assert_eq!(name, "front_b.jpg");
+            }
+            other => panic!("unexpected error: {}", other),
+        }
+    }
+
+    #[test]
+    fn no_front_images_is_an_error() {
+        let error = generate_from_bytes(
+            Vec::new(),
+            Some(BACK.to_vec()),
+            PaperSize::A4,
+            CardSize::Tcg,
+            Vec::new(),
+            true,
+        )
+        .expect_err("should fail because there are no front images");
+
+        assert!(matches!(error, GenerateError::NoImages));
+    }
+}
