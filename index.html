@@ -6,204 +6,428 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Card PDF Generator</title>
   <style>
+    :root {
+      --color-bg: #0f172a;
+      --color-surface: #111a33;
+      --color-panel: #16233f;
+      --color-accent: #4cc9f0;
+      --color-accent-strong: #3a86ff;
+      --color-success: #4caf50;
+      --color-warning: #fbbc04;
+      --color-error: #ff6f61;
+      --color-text: #ecf2ff;
+      --color-muted: #90a3c1;
+      --border-radius: 12px;
+      --transition: 0.2s ease;
+    }
+
     * {
       box-sizing: border-box;
     }
 
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-family: 'Segoe UI', 'Inter', system-ui, -apple-system, sans-serif;
       margin: 0;
       padding: 0;
-      background: #f0f2f5;
-      color: #333;
-    }
-
-    header {
-      background-color: #1e88e5;
-      color: white;
-      padding: 1rem 2rem;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-
-    header h1 {
-      margin: 0;
-      font-size: 1.75rem;
+      background: radial-gradient(circle at 20% 20%, rgba(74, 222, 255, 0.12), transparent 55%),
+        radial-gradient(circle at 80% 10%, rgba(63, 81, 181, 0.2), transparent 50%),
+        linear-gradient(160deg, #0b1320 0%, #1c2750 60%, #0b1320 100%);
+      color: var(--color-text);
+      min-height: 100vh;
     }
 
     main {
-      max-width: 800px;
-      margin: 2rem auto;
-      background: white;
-      padding: 2rem;
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      max-width: 1040px;
+      margin: 3.25rem auto 3rem;
+      padding: 0 1.5rem;
     }
 
-    label {
-      display: block;
-      margin-top: 1rem;
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(280px, 360px) 1fr;
+      gap: 1.75rem;
+    }
+
+    .panel {
+      background: rgba(13, 22, 47, 0.9);
+      border: 1px solid rgba(76, 201, 240, 0.12);
+      border-radius: var(--border-radius);
+      padding: 1.5rem;
+      box-shadow: 0 20px 40px rgba(10, 14, 35, 0.45);
+      backdrop-filter: blur(8px);
+    }
+
+    .panel h2 {
+      margin: 0 0 1rem;
+      font-size: 1.1rem;
       font-weight: 600;
+      color: var(--color-accent);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
     }
 
-    input[type="file"],
-    select {
+    .form-group {
+      margin-bottom: 1.35rem;
+    }
+
+    .form-group label {
       display: block;
-      margin-top: 0.5rem;
-      padding: 0.4rem;
-      width: 100%;
-      border: 1px solid #ccc;
-      border-radius: 4px;
+      font-weight: 600;
+      letter-spacing: 0.015em;
+      color: var(--color-text);
     }
 
-    #pdfContainer {
-      margin-top: 2rem;
+    .input-shell {
+      margin-top: 0.65rem;
+      position: relative;
+    }
+
+    .input-shell input[type="file"],
+    .input-shell select {
       width: 100%;
-      height: 500px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.05);
+      padding: 0.65rem 0.75rem;
+      border-radius: 8px;
+      border: 1px solid rgba(76, 201, 240, 0.24);
+      background: rgba(17, 31, 57, 0.9);
+      color: var(--color-text);
+      font-size: 0.95rem;
+      transition: border var(--transition), box-shadow var(--transition);
+    }
+
+    .input-shell input[type="file"]:focus,
+    .input-shell select:focus {
+      outline: none;
+      border-color: var(--color-accent);
+      box-shadow: 0 0 0 3px rgba(76, 201, 240, 0.18);
+    }
+
+    .form-help {
+      margin-top: 0.45rem;
+      font-size: 0.85rem;
+      color: var(--color-muted);
     }
 
     #generateButton {
-      margin-top: 2rem;
-      padding: 0.75rem 1.5rem;
-      background-color: #43a047;
-      color: white;
+      width: 100%;
+      padding: 0.85rem;
+      border-radius: 999px;
       border: none;
-      cursor: pointer;
       font-size: 1rem;
-      border-radius: 6px;
-      transition: background-color 0.3s;
-    }
-
-    #generateButton:hover {
-      background-color: #388e3c;
-    }
-
-    #downloadLink {
-      display: inline-block;
-      margin-top: 1.5rem;
-      color: #1e88e5;
-      text-decoration: none;
       font-weight: 600;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      background: linear-gradient(135deg, var(--color-accent), var(--color-accent-strong));
+      color: var(--color-text);
+      cursor: pointer;
+      transition: transform var(--transition), box-shadow var(--transition), opacity var(--transition);
+      margin-top: 1.35rem;
     }
 
-    #status {
-      margin-top: 1rem;
-      min-height: 1.5rem;
+    #generateButton:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 16px 30px rgba(58, 134, 255, 0.35);
+    }
+
+    #generateButton:disabled {
+      opacity: 0.75;
+      cursor: progress;
+    }
+
+    .status {
+      margin-top: 1.25rem;
+      padding: 0.9rem 1rem;
+      border-radius: 10px;
+      background: rgba(17, 27, 47, 0.8);
+      border: 1px solid transparent;
       font-size: 0.95rem;
+      min-height: 52px;
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
     }
 
-    .status-info {
-      color: #444;
+    .status::before {
+      content: "";
+      width: 0.65rem;
+      height: 0.65rem;
+      border-radius: 50%;
+      background: var(--color-muted);
+      box-shadow: 0 0 0 0 rgba(76, 201, 240, 0.4);
+      transition: background var(--transition), box-shadow var(--transition);
     }
 
     .status-success {
-      color: #2e7d32;
+      border-color: rgba(76, 175, 80, 0.35);
+      background: rgba(35, 64, 48, 0.6);
+    }
+
+    .status-success::before {
+      background: var(--color-success);
+      box-shadow: 0 0 12px rgba(76, 175, 80, 0.45);
     }
 
     .status-error {
-      color: #c62828;
+      border-color: rgba(255, 111, 97, 0.4);
+      background: rgba(90, 36, 36, 0.55);
+    }
+
+    .status-error::before {
+      background: var(--color-error);
+      box-shadow: 0 0 12px rgba(255, 111, 97, 0.45);
+    }
+
+    .status-info {
+      border-color: rgba(76, 201, 240, 0.25);
+      background: rgba(14, 27, 51, 0.6);
+    }
+
+    .status-info::before {
+      background: var(--color-accent);
+      box-shadow: 0 0 12px rgba(76, 201, 240, 0.45);
+    }
+
+    .selections {
+      margin-top: 1.5rem;
+      background: rgba(16, 27, 48, 0.8);
+      border-radius: 10px;
+      border: 1px solid rgba(76, 201, 240, 0.12);
+      padding: 1rem;
+    }
+
+    .selections h3 {
+      margin: 0 0 0.75rem;
+      font-size: 0.95rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--color-muted);
+    }
+
+    #fileList {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+
+    #fileList li {
+      padding: 0.35rem 0.6rem;
+      border-radius: 999px;
+      background: rgba(76, 201, 240, 0.15);
+      font-size: 0.78rem;
+      letter-spacing: 0.04em;
+      color: var(--color-text);
+    }
+
+    #fileList li.empty {
+      background: transparent;
+      color: var(--color-muted);
+      font-style: italic;
+    }
+
+    .preview-panel {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 1rem;
+    }
+
+    .pdf-frame {
+      width: 100%;
+      min-height: 520px;
+      border: 1px solid rgba(76, 201, 240, 0.18);
+      border-radius: 10px;
+      background: rgba(10, 19, 38, 0.8);
+      box-shadow: inset 0 0 18px rgba(1, 7, 18, 0.65);
+    }
+
+    #downloadLink {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.6rem 1rem;
+      border-radius: 999px;
+      background: rgba(76, 201, 240, 0.15);
+      color: var(--color-text);
+      text-decoration: none;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
+    }
+
+    #downloadLink:hover {
+      background: rgba(58, 134, 255, 0.25);
+      transform: translateY(-1px);
+      box-shadow: 0 12px 24px rgba(58, 134, 255, 0.25);
+    }
+
+    .tips {
+      margin-top: 2rem;
+      padding: 1.25rem;
+      border-radius: var(--border-radius);
+      background: rgba(14, 26, 49, 0.85);
+      border: 1px solid rgba(76, 201, 240, 0.12);
+      color: var(--color-muted);
+      line-height: 1.6;
+    }
+
+    .tips strong {
+      color: var(--color-text);
+    }
+
+    #description-box {
+      margin: 1.5rem 0 0;
+    }
+
+    #toggleDescription {
+      font-size: 0.95rem;
+      color: var(--color-accent);
+      text-decoration: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: color var(--transition);
+    }
+
+    #toggleDescription:hover {
+      color: var(--color-accent-strong);
+    }
+
+    #description {
+      margin-top: 0.8rem;
+      background-color: rgba(14, 24, 44, 0.9);
+      padding: 1.1rem;
+      border-radius: 10px;
+      border: 1px solid rgba(76, 201, 240, 0.12);
+      font-size: 0.95rem;
+      line-height: 1.65;
+      color: var(--color-muted);
     }
 
     label.checkbox {
       display: flex;
       align-items: center;
-      gap: 0.5rem;
-      font-weight: 500;
+      gap: 0.6rem;
+      margin-top: 1.4rem;
+      margin-bottom: 0.4rem;
+      font-size: 0.95rem;
+      color: var(--color-muted);
     }
 
     label.checkbox input[type="checkbox"] {
       width: auto;
-      margin-top: 0;
+      accent-color: var(--color-accent-strong);
+      margin: 0;
     }
 
-    #description-box {
-      margin-bottom: 1.5rem;
+    @media (max-width: 960px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .preview-panel {
+        min-height: 420px;
+      }
     }
 
-    #toggleDescription {
-      font-size: 1rem;
-      color: #1e88e5;
-      text-decoration: none;
-      cursor: pointer;
-      display: inline-block;
-      margin-bottom: 0.5rem;
-      transition: color 0.2s ease;
-    }
+    @media (max-width: 600px) {
+      main {
+        padding: 0 1rem 2.5rem;
+      }
 
-    #toggleDescription:hover {
-      text-decoration: underline;
-    }
+      .panel {
+        padding: 1.25rem;
+      }
 
-    #description {
-      background-color: #f9f9f9;
-      padding: 1rem;
-      border-left: 4px solid #1e88e5;
-      border-radius: 6px;
-      font-size: 1rem;
-      line-height: 1.6;
-      color: #444;
-      transition: all 0.3s ease;
+      .pdf-frame {
+        min-height: 360px;
+      }
     }
   </style>
 </head>
 
 <body>
-  <header>
-    <h1>Card PDF Generator</h1>
-  </header>
   <main>
-    <section id="description-box">
-      <a id="toggleDescription" href="#">▼ What is this?</a>
-      <div id="description" style="display: none;">
-        <p>
-          This tool lets you make your own cards, by generating a print-ready PDF from the images you upload. Each image will be scaled 
-          so that the final printed cards have the correct size.
-        </p>
-        <p>
-          You can optionally add a back image that will be used on all cards. Once the PDF is generated, you can preview
-          it and download it for printing.
-        </p>
-        <p style="font-weight: bold;">
-          When printing, be sure to select <u>"Actual size"</u> or <u>100%</u> (not "Fit" or "Scale") to ensure proper dimensions.
-        </p>
-      </div>
-    </section>
 
+    <div class="layout">
+      <section class="panel">
+        <h2>Setup</h2>
+        <div class="form-group">
+          <label for="files">Card fronts</label>
+          <div class="input-shell">
+            <input type="file" id="files" multiple accept="image/png,image/jpeg" />
+          </div>
+          <p class="form-help">Upload several PNG or JPEG files. They'll be sorted alphabetically.</p>
+        </div>
 
-    <label>
-      Card images (PNG or JPEG):
-      <input type="file" id="files" multiple accept="image/png,image/jpeg" />
-    </label>
-    <label>
-      Card back (PNG or JPEG):
-      <input type="file" id="back" accept="image/png,image/jpeg" />
-    </label>
-    <label>
-      Paper size:
-      <select id="paperSize">
-        <option value="0">A4</option>
-        <option value="1">Letter</option>
-      </select>
-    </label>
-  <label>
-      Card size:
-      <select id="cardSize">
-        <option value="0">TCG <small>(63mm x 88mm)</small></option>
-        <option value="1">Tarrot <small>(70mm x 120mm)</small></option>
-      </select>
-    </label>
-    <label class="checkbox">
-      <input type="checkbox" id="mirrorBack" checked />
-      Mirror card back for duplex printing
-    </label>
-    <button id="generateButton" type="button">Generate PDF</button>
-    <p id="status" class="status-info" role="status" aria-live="polite">
-      Select your card images and click Generate.
-    </p>
-    <a id="downloadLink" style="display:none">Download PDF</a>
-    <iframe id="pdfContainer" style="display:none" title="PDF Preview"></iframe>
+        <div class="form-group">
+          <label for="back">Card back</label>
+          <div class="input-shell">
+            <input type="file" id="back" accept="image/png,image/jpeg" />
+          </div>
+          <p class="form-help">Optional. Will repeat on every back page.</p>
+        </div>
+
+        <div class="form-group">
+          <label for="paperSize">Paper size</label>
+          <div class="input-shell">
+            <select id="paperSize">
+              <option value="0">A4</option>
+              <option value="1">Letter</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="cardSize">Card size</label>
+          <div class="input-shell">
+            <select id="cardSize">
+              <option value="0">TCG (63mm × 88mm)</option>
+              <option value="1">Tarrot (70mm × 120mm)</option>
+            </select>
+          </div>
+        </div>
+
+        <label class="checkbox">
+          <input type="checkbox" id="mirrorBack" checked />
+          Mirror card back for duplex printing
+        </label>
+
+        <button id="generateButton" type="button">Generate PDF</button>
+
+        <div id="status" class="status status-info" role="status" aria-live="polite">
+          Select your card images and click Generate.
+        </div>
+
+        <div class="selections">
+          <h3>Card fronts selected</h3>
+          <ul id="fileList"></ul>
+        </div>
+      </section>
+
+      <section class="panel preview-panel">
+        <h2>Preview</h2>
+        <iframe id="pdfContainer" class="pdf-frame" style="display:none" title="PDF Preview"></iframe>
+        <a id="downloadLink" style="display:none">Download PDF</a>
+
+        <div class="tips">
+          <strong>Pro tip:</strong> Print using <em>Actual size</em> or <em>100%</em> scaling to keep your card dimensions accurate. For duplex printing, print fronts first, then flip along the long edge.
+        </div>
+
+        <section id="description-box">
+          <a id="toggleDescription" href="#">▼ How it works</a>
+          <div id="description" style="display: none;">
+            <p>
+              This tool collects your images, sorts them, and packs them onto pages using precise card dimensions. Each page includes faint cut guides to help with trimming.
+            </p>
+            <p>
+              If you supply a back image, it will appear on a separate page. Enable mirroring for duplex printing so fronts and backs line up when flipped.
+            </p>
+          </div>
+        </section>
+      </section>
+    </div>
   </main>
   <script type="module">
     import init, { generate_pdf } from "./pkg/cardlayouter.js";
@@ -219,6 +443,7 @@
     const pdfContainer = document.getElementById("pdfContainer");
     const status = document.getElementById("status");
     const generateButton = document.getElementById("generateButton");
+    const fileList = document.getElementById("fileList");
 
     let currentPdfUrl = null;
 
@@ -235,14 +460,7 @@
 
     const setStatus = (message, type = "info") => {
       status.textContent = message;
-      status.className = "";
-      if (type === "success") {
-        status.classList.add("status-success");
-      } else if (type === "error") {
-        status.classList.add("status-error");
-      } else {
-        status.classList.add("status-info");
-      }
+      status.className = `status status-${type}`;
     };
 
     const describeSelection = () => {
@@ -252,6 +470,32 @@
       } else {
         const noun = count === 1 ? "card" : "cards";
         setStatus(`Ready to generate ${count} front ${noun}.`);
+      }
+    };
+
+    const renderFileList = () => {
+      const files = Array.from(fileInput.files);
+      fileList.innerHTML = "";
+
+      if (files.length === 0) {
+        const empty = document.createElement("li");
+        empty.textContent = "No files selected yet";
+        empty.classList.add("empty");
+        fileList.appendChild(empty);
+        return;
+      }
+
+      const preview = files.slice(0, 6);
+      preview.forEach((file) => {
+        const li = document.createElement("li");
+        li.textContent = file.name;
+        fileList.appendChild(li);
+      });
+
+      if (files.length > preview.length) {
+        const remainder = document.createElement("li");
+        remainder.textContent = `+${files.length - preview.length} more`;
+        fileList.appendChild(remainder);
       }
     };
 
@@ -332,15 +576,21 @@
       input.addEventListener("change", () => {
         resetPreview();
         describeSelection();
+        renderFileList();
       })
     );
 
     describeSelection();
+    renderFileList();
 
 
-    document.getElementById("toggleDescription").addEventListener("click", () => {
+    const toggleDescriptionLink = document.getElementById("toggleDescription");
+    toggleDescriptionLink.addEventListener("click", (event) => {
+      event.preventDefault();
       const desc = document.getElementById("description");
-      desc.style.display = desc.style.display === "none" ? "block" : "none";
+      const isHidden = desc.style.display === "none";
+      desc.style.display = isHidden ? "block" : "none";
+      toggleDescriptionLink.textContent = `${isHidden ? "▲" : "▼"} How it works`;
     });
 
 
