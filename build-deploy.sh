@@ -1,24 +1,24 @@
 #!/bin/bash
 
-set -e
+set -euo pipefail
 
-# 1) Add target
-rustup target add wasm32-unknown-unknown
+TARGET="wasm32-unknown-unknown"
 
-# 2) Build
-cargo build --target wasm32-unknown-unknown --release
+if ! rustup target list --installed | grep -q "^${TARGET}$"; then
+  rustup target add "${TARGET}"
+fi
 
-# 3) Run wasm-bindgen
+cargo build --target "${TARGET}" --release
+
 rm -rf dist
-mkdir dist
+mkdir -p dist/pkg
 
 wasm-bindgen \
-  target/wasm32-unknown-unknown/release/cardlayouter.wasm \
+  target/${TARGET}/release/cardlayouter.wasm \
   --out-dir dist/pkg \
   --target web \
   --no-typescript
 
-# 4) Copy HTML
 cp index.html dist/
 
 echo "✅ Build complete."

@@ -1,14 +1,17 @@
 #!/bin/bash
 
-# 1) Make sure the wasm32 target is available
-rustup target add wasm32-unknown-unknown
+set -euo pipefail
 
-# 2) Compile your crate to Wasm (release for better optimizations)
-cargo build --target wasm32-unknown-unknown --release
+TARGET="wasm32-unknown-unknown"
 
-# 3) Run wasm-bindgen to generate JS glue in ./pkg
+if ! rustup target list --installed | grep -q "^${TARGET}$"; then
+  rustup target add "${TARGET}"
+fi
+
+cargo build --target "${TARGET}" --release
+
 wasm-bindgen \
-  target/wasm32-unknown-unknown/release/cardlayouter.wasm \
+  target/${TARGET}/release/cardlayouter.wasm \
   --out-dir pkg \
   --target web \
   --no-typescript

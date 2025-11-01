@@ -9,7 +9,14 @@ use web_sys::console;
 use crate::pdf_generation::generate_from_bytes;
 
 #[wasm_bindgen]
-pub fn generate_pdf(pngs: Array, back: JsValue, paper_size: u32, card_size: u32, file_names: Array) -> Uint8Array {
+pub fn generate_pdf(
+    pngs: Array,
+    back: JsValue,
+    paper_size: u32,
+    card_size: u32,
+    file_names: Array,
+    mirror_back: bool,
+) -> Result<Uint8Array, JsValue> {
     console::log_1(&format!("JS passed {} buffers", pngs.length()).into());
 
     let mut image_bytes = vec![];
@@ -22,8 +29,7 @@ pub fn generate_pdf(pngs: Array, back: JsValue, paper_size: u32, card_size: u32,
     }
     let names = file_names.iter().filter_map(|f| f.as_string()).collect();
 
-
-    let back = if back.is_undefined() {
+    let back = if back.is_undefined() || back.is_null() {
         None
     } else {
         let u8arr = Uint8Array::new(&back);
@@ -42,8 +48,9 @@ pub fn generate_pdf(pngs: Array, back: JsValue, paper_size: u32, card_size: u32,
         _ => layout::CardSize::Tarrot,
     };
 
-    let bytes = generate_from_bytes(image_bytes, back, paper_size, card_size,names);
+    let bytes = generate_from_bytes(image_bytes, back, paper_size, card_size, names, mirror_back)
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
 
     console::log_1(&format!("Final PDF size: {} bytes", bytes.len()).into());
-    Uint8Array::from(bytes.as_slice())
+    Ok(Uint8Array::from(bytes.as_slice()))
 }

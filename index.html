@@ -88,6 +88,36 @@
       font-weight: 600;
     }
 
+    #status {
+      margin-top: 1rem;
+      min-height: 1.5rem;
+      font-size: 0.95rem;
+    }
+
+    .status-info {
+      color: #444;
+    }
+
+    .status-success {
+      color: #2e7d32;
+    }
+
+    .status-error {
+      color: #c62828;
+    }
+
+    label.checkbox {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: 500;
+    }
+
+    label.checkbox input[type="checkbox"] {
+      width: auto;
+      margin-top: 0;
+    }
+
     #description-box {
       margin-bottom: 1.5rem;
     }
@@ -143,12 +173,12 @@
 
 
     <label>
-      Card images (PNG):
-      <input type="file" id="files" multiple accept="image/png" />
+      Card images (PNG or JPEG):
+      <input type="file" id="files" multiple accept="image/png,image/jpeg" />
     </label>
     <label>
-      Card back (PNG):
-      <input type="file" id="back" accept="image/png" />
+      Card back (PNG or JPEG):
+      <input type="file" id="back" accept="image/png,image/jpeg" />
     </label>
     <label>
       Paper size:
@@ -164,6 +194,14 @@
         <option value="1">Tarrot <small>(70mm x 120mm)</small></option>
       </select>
     </label>
+    <label class="checkbox">
+      <input type="checkbox" id="mirrorBack" checked />
+      Mirror card back for duplex printing
+    </label>
+    <button id="generateButton" type="button">Generate PDF</button>
+    <p id="status" class="status-info" role="status" aria-live="polite">
+      Select your card images and click Generate.
+    </p>
     <a id="downloadLink" style="display:none">Download PDF</a>
     <iframe id="pdfContainer" style="display:none" title="PDF Preview"></iframe>
   </main>
@@ -176,29 +214,86 @@
     const backInput = document.getElementById("back");
     const paperSizeSelect = document.getElementById("paperSize");
     const cardSizeSelect = document.getElementById("cardSize");
+    const mirrorBackInput = document.getElementById("mirrorBack");
     const downloadLink = document.getElementById("downloadLink");
     const pdfContainer = document.getElementById("pdfContainer");
+    const status = document.getElementById("status");
+    const generateButton = document.getElementById("generateButton");
 
-    async function autoGeneratePDF() {
+    let currentPdfUrl = null;
+
+    const resetPreview = () => {
+      if (currentPdfUrl) {
+        URL.revokeObjectURL(currentPdfUrl);
+        currentPdfUrl = null;
+      }
+      pdfContainer.style.display = "none";
+      pdfContainer.src = "";
+      downloadLink.style.display = "none";
+      downloadLink.removeAttribute("href");
+    };
+
+    const setStatus = (message, type = "info") => {
+      status.textContent = message;
+      status.className = "";
+      if (type === "success") {
+        status.classList.add("status-success");
+      } else if (type === "error") {
+        status.classList.add("status-error");
+      } else {
+        status.classList.add("status-info");
+      }
+    };
+
+    const describeSelection = () => {
+      const count = fileInput.files.length;
+      if (count === 0) {
+        setStatus("Add at least one front card image to generate a PDF.");
+      } else {
+        const noun = count === 1 ? "card" : "cards";
+        setStatus(`Ready to generate ${count} front ${noun}.`);
+      }
+    };
+
+    generateButton.addEventListener("click", async () => {
       const filesArray = Array.from(fileInput.files);
-      if (filesArray.length === 0) return;
-
-      const buffers = await Promise.all(
-        filesArray.map(async (f) => new Uint8Array(await f.arrayBuffer()))
-      );
-      const fileNames =filesArray.map((f)=> f.name);
-
-      let backBuffer = null;
-      if (backInput.files.length > 0) {
-        backBuffer = new Uint8Array(await backInput.files[0].arrayBuffer());
+      if (filesArray.length === 0) {
+        setStatus("Please choose at least one front card image before generating.", "error");
+        resetPreview();
+        return;
       }
 
-      const paperSize = parseInt(paperSizeSelect.value, 10);
-      const cardSize = parseInt(cardSizeSelect.value, 10);
       try {
-        const pdfBytes = generate_pdf(buffers, backBuffer, paperSize, cardSize,fileNames);
+        generateButton.disabled = true;
+        generateButton.textContent = "Generating...";
+        setStatus("Building your PDF...", "info");
+
+        const buffers = await Promise.all(
+          filesArray.map(async (f) => new Uint8Array(await f.arrayBuffer()))
+        );
+        const fileNames = filesArray.map((f) => f.name);
+
+        let backBuffer = null;
+        if (backInput.files.length > 0) {
+          backBuffer = new Uint8Array(await backInput.files[0].arrayBuffer());
+        }
+
+        const paperSize = parseInt(paperSizeSelect.value, 10);
+        const cardSize = parseInt(cardSizeSelect.value, 10);
+        const mirrorBack = mirrorBackInput.checked;
+
+        const pdfBytes = generate_pdf(
+          buffers,
+          backBuffer,
+          paperSize,
+          cardSize,
+          fileNames,
+          mirrorBack
+        );
+
         const pdfBlob = new Blob([pdfBytes], { type: "application/pdf" });
         const pdfUrl = URL.createObjectURL(pdfBlob);
+        currentPdfUrl = pdfUrl;
 
         pdfContainer.style.display = "block";
         pdfContainer.src = pdfUrl;
@@ -207,20 +302,40 @@
         downloadLink.href = pdfUrl;
         downloadLink.download = "cards.pdf";
         downloadLink.textContent = "Download PDF";
+
+        const noun = filesArray.length === 1 ? "card" : "cards";
+        setStatus(`PDF ready with ${filesArray.length} ${noun}.`, "success");
       } catch (err) {
         console.error(err);
-        alert("Failed to generate PDF");
+        const message = err instanceof Error
+          ? err.message
+          : typeof err === "string"
+          ? err
+          : "Failed to generate PDF.";
+        setStatus(message, "error");
+        resetPreview();
+      } finally {
+        generateButton.disabled = false;
+        generateButton.textContent = "Generate PDF";
       }
-    }
+    });
 
-    const handleChange = () => {
-      autoGeneratePDF();
-    };
+    const inputsToWatch = [
+      fileInput,
+      backInput,
+      paperSizeSelect,
+      cardSizeSelect,
+      mirrorBackInput,
+    ];
 
-    fileInput.addEventListener("change", handleChange);
-    backInput.addEventListener("change", handleChange);
-    paperSizeSelect.addEventListener("change", handleChange);
-    cardSizeSelect.addEventListener("change", handleChange);
+    inputsToWatch.forEach((input) =>
+      input.addEventListener("change", () => {
+        resetPreview();
+        describeSelection();
+      })
+    );
+
+    describeSelection();
 
 
     document.getElementById("toggleDescription").addEventListener("click", () => {

@@ -1,8 +1,40 @@
+use std::fmt;
+
 use printpdf::*;
 
-use crate::layout::{CardSize, LayoutSettings, PaperSize};
+use crate::layout::{CardSize, LayoutError, LayoutSettings, PaperSize};
 
-fn generate_back_page(
+#[derive(Debug)]
+pub enum GenerateError {
+    NoImages,
+    Layout(LayoutError),
+    MissingImage { name: String },
+    DecodeFront { name: String, reason: String },
+    DecodeBack { reason: String },
+}
+
+impl fmt::Display for GenerateError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            GenerateError::NoImages => write!(f, "No front card images were provided."),
+            GenerateError::Layout(err) => write!(f, "{}", err),
+            GenerateError::MissingImage { name } => write!(
+                f,
+                "Could not find image bytes for '{name}' after sorting. Please retry the upload."
+            ),
+            GenerateError::DecodeFront { name, reason } => {
+                write!(f, "Failed to decode front image '{name}': {reason}")
+            }
+            GenerateError::DecodeBack { reason } => {
+                write!(f, "Failed to decode back image: {reason}")
+            }
+        }
+    }
+}
+
+impl std::error::Error for GenerateError {}
+
+fn generate_back_page_mirrored(
     doc: &mut PdfDocument,
     layout: &LayoutSettings,
     back_image: &RawImage,
@@ -15,7 +47,7 @@ fn generate_back_page(
     let (scale_x, scale_y) = l.scale_card((back_image.width, back_image.height));
 
     for i in 0..l.card_columns() * l.card_rows() {
-        let (x, y) = l.card_position(i);
+        let (x, y) = l.mirrored_card_position(i);
         // Place the same image again, but translated, rotated, and scaled
         page_ops.push(Op::UseXobject {
             id: image_id.clone(),
@@ -152,38 +184,52 @@ pub fn generate_from_bytes(
     paper_size: PaperSize,
     card_size: CardSize,
     file_names: Vec<String>,
-) -> Vec<u8> {
-    //Sort by names first, then use indexes to decode images in that order
-    let mut file_names: Vec<_> = file_names.iter().enumerate().collect();
-    file_names.sort_by_key(|f| f.1);
+    mirror_back: bool,
+) -> Result<Vec<u8>, GenerateError> {
+    // Sort by names first, then use indexes to decode images in that order
+    let mut indexed_names: Vec<_> = file_names.into_iter().enumerate().collect();
+    indexed_names.sort_by(|a, b| a.1.cmp(&b.1));
 
-    let mut images = vec![];
-    for (i, _) in file_names {
-        if let Some(img) = images_bytes.get(i) {
-            match RawImage::decode_from_bytes(&img, &mut Vec::new()) {
-                Ok(img) => {
-                    images.push(img);
-                }
-                Err(_e) => {
-                    //console::warn_1(&format!("⚠️ Failed to decode #{}: {:?}", i, e).into());
-                }
+    let mut images = Vec::with_capacity(indexed_names.len());
+    for (original_index, name) in indexed_names {
+        let bytes = images_bytes
+            .get(original_index)
+            .ok_or_else(|| GenerateError::MissingImage { name: name.clone() })?;
+
+        match RawImage::decode_from_bytes(bytes, &mut Vec::new()) {
+            Ok(img) => images.push(img),
+            Err(err) => {
+                return Err(GenerateError::DecodeFront {
+                    name,
+                    reason: err.to_string(),
+                });
             }
         }
     }
 
-    let l = LayoutSettings::new(paper_size, card_size);
+    if images.is_empty() {
+        return Err(GenerateError::NoImages);
+    }
+
+    let layout = LayoutSettings::new(paper_size, card_size).map_err(GenerateError::Layout)?;
 
     let mut doc = PdfDocument::new("Cards");
-    let mut pages = generate_pages(&mut doc, images, &l);
+    let mut pages = generate_pages(&mut doc, images, &layout);
 
     if let Some(img) = back {
         match RawImage::decode_from_bytes(&img, &mut Vec::new()) {
             Ok(img) => {
-                let page = generate_back_page(&mut doc, &l, &img);
+                let page = if mirror_back {
+                    generate_back_page_mirrored(&mut doc, &layout, &img)
+                } else {
+                    generate_back_page_straight(&mut doc, &layout, &img)
+                };
                 pages.push(page);
             }
-            Err(_e) => {
-                //console::warn_1(&format!("⚠️ Failed to decode #{}: {:?}", i, e).into());
+            Err(err) => {
+                return Err(GenerateError::DecodeBack {
+                    reason: err.to_string(),
+                });
             }
         }
     }
@@ -191,5 +237,38 @@ pub fn generate_from_bytes(
     let bytes = doc
         .with_pages(pages)
         .save(&PdfSaveOptions::default(), &mut Vec::new());
-    bytes
+    Ok(bytes)
+}
+
+fn generate_back_page_straight(
+    doc: &mut PdfDocument,
+    layout: &LayoutSettings,
+    back_image: &RawImage,
+) -> PdfPage {
+    let dpi = layout.dpi();
+    let mut page_ops = vec![];
+    let image_id = doc.add_image(back_image);
+    let (scale_x, scale_y) = layout.scale_card((back_image.width, back_image.height));
+
+    for i in 0..layout.card_columns() * layout.card_rows() {
+        let (x, y) = layout.card_position(i);
+        page_ops.push(Op::UseXobject {
+            id: image_id.clone(),
+            transform: XObjectTransform {
+                translate_x: Some(x),
+                translate_y: Some(y),
+                scale_x: Some(scale_x),
+                scale_y: Some(scale_y),
+                dpi: Some(dpi),
+                rotate: None,
+            },
+        });
+    }
+
+    page_ops.extend_from_slice(&draw_lines(layout));
+    PdfPage::new(
+        layout.page_width().into(),
+        layout.page_height().into(),
+        page_ops,
+    )
 }
